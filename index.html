@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Mapa Sucre</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="theme-color" content="#1f6feb">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Mapa Sucre">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="lib/maplibre-gl.css">
+<style>
+  :root{
+    --bg:#ffffff; --fg:#1b1f24; --muted:#6b7280; --line:#e5e7eb; --accent:#1f6feb; --danger:#e11d48;
+    --shadow:0 2px 12px rgba(0,0,0,.22);
+    --top:env(safe-area-inset-top,0px); --bottom:env(safe-area-inset-bottom,0px);
+  }
+  body.dark{ --bg:#1c2026; --fg:#e8ecf1; --muted:#9aa4b2; --line:#2d343d; --shadow:0 2px 12px rgba(0,0,0,.6); }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ margin:0; height:100%; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; color:var(--fg); background:#f2efe9; overflow:hidden; }
+  body.dark{ background:#14181d; }
+  #map{ position:absolute; inset:0; }
+
+  /* Buscador */
+  #topbar{ position:absolute; z-index:20; top:calc(10px + var(--top)); left:10px; right:10px; max-width:560px; margin:0 auto; }
+  #searchbox{ display:flex; align-items:center; background:var(--bg); border-radius:14px; box-shadow:var(--shadow); padding:0 6px 0 14px; height:48px; }
+  #searchbox svg{ flex:none; color:var(--muted); }
+  #q{ flex:1; min-width:0; border:0; outline:0; background:transparent; color:var(--fg); font-size:16px; padding:0 10px; height:100%; }
+  #q::-webkit-search-cancel-button{ display:none; }
+  #btnClear{ display:none; border:0; background:transparent; color:var(--muted); font-size:20px; width:40px; height:40px; border-radius:20px; }
+  #results{ list-style:none; margin:6px 0 0; padding:0; background:var(--bg); border-radius:14px; box-shadow:var(--shadow); max-height:52vh; overflow:auto; display:none; }
+  #results li{ padding:11px 14px; border-bottom:1px solid var(--line); cursor:pointer; }
+  #results li:last-child{ border-bottom:0; }
+  #results li:active{ background:var(--line); }
+  #results .n{ font-size:15px; }
+  #results .t{ font-size:12px; color:var(--muted); margin-top:2px; }
+  #results .empty{ color:var(--muted); cursor:default; }
+
+  /* Botones flotantes */
+  #fab{ position:absolute; z-index:15; left:10px; bottom:calc(28px + var(--bottom)); display:flex; flex-direction:column; gap:10px; }
+  .fab{ width:46px; height:46px; border-radius:23px; border:0; background:var(--bg); color:var(--fg); box-shadow:var(--shadow); display:flex; align-items:center; justify-content:center; }
+  .fab:active{ transform:scale(.96); }
+  .maplibregl-ctrl-bottom-right{ bottom:calc(20px + var(--bottom)); }
+
+  /* Hojas inferiores */
+  .sheet{ position:absolute; z-index:30; left:0; right:0; bottom:0; margin:0 auto; max-width:560px; background:var(--bg); border-radius:18px 18px 0 0; box-shadow:0 -4px 20px rgba(0,0,0,.3);
+          padding:16px 16px calc(16px + var(--bottom)); transform:translateY(105%); transition:transform .22s ease; }
+  .sheet.open{ transform:translateY(0); }
+  .sheet h2{ margin:0 0 2px; font-size:18px; padding-right:36px; }
+  .sheet .sub{ color:var(--muted); font-size:13px; margin-bottom:12px; word-break:break-word; }
+  .sheet .close{ position:absolute; right:10px; top:10px; border:0; background:transparent; color:var(--muted); font-size:22px; width:36px; height:36px; }
+  .row{ display:flex; gap:8px; flex-wrap:wrap; }
+  .btn{ border:1px solid var(--line); background:transparent; color:var(--fg); border-radius:10px; padding:10px 14px; font-size:14px; }
+  .btn.primary{ background:var(--accent); border-color:var(--accent); color:#fff; }
+  .btn.danger{ color:var(--danger); border-color:var(--danger); }
+  #panelSitios{ max-height:70vh; overflow:auto; }
+  #listaSitios{ list-style:none; margin:8px 0 12px; padding:0; }
+  #listaSitios li{ display:flex; align-items:center; gap:8px; padding:10px 0; border-bottom:1px solid var(--line); }
+  #listaSitios .info{ flex:1; min-width:0; cursor:pointer; }
+  #listaSitios .info b{ display:block; font-size:15px; font-weight:600; }
+  #listaSitios .info span{ font-size:12px; color:var(--muted); }
+  #listaSitios .del{ border:0; background:transparent; color:var(--danger); font-size:20px; width:38px; height:38px; }
+  .vacio{ color:var(--muted); font-size:14px; padding:14px 0; }
+
+  /* Carga */
+  #loading{ position:absolute; z-index:50; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; background:#f2efe9; color:#333; font-size:15px; transition:opacity .3s; }
+  body.dark #loading{ background:#14181d; color:#ccc; }
+  #loading.hide{ opacity:0; pointer-events:none; }
+  .bar{ width:200px; height:6px; background:rgba(0,0,0,.12); border-radius:3px; overflow:hidden; }
+  .bar i{ display:block; height:100%; width:0; background:var(--accent); transition:width .2s; }
+  #toast{ position:absolute; z-index:60; left:50%; bottom:calc(90px + var(--bottom)); transform:translateX(-50%); background:rgba(20,20,20,.92); color:#fff; padding:10px 16px; border-radius:20px; font-size:14px; opacity:0; transition:opacity .2s; pointer-events:none; max-width:86vw; text-align:center; }
+  #toast.show{ opacity:1; }
+</style>
+</head>
+<body>
+<div id="map"></div>
+
+<div id="topbar">
+  <div id="searchbox">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+    <input id="q" type="search" placeholder="Buscar calle, lugar o negocio" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="search">
+    <button id="btnClear" aria-label="Borrar">✕</button>
+  </div>
+  <ul id="results"></ul>
+</div>
+
+<div id="fab">
+  <button class="fab" id="btnSitios" aria-label="Mis sitios">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="m12 2.5 2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5L2.5 9.4l6.6-.9z"/></svg>
+  </button>
+  <button class="fab" id="btnTema" aria-label="Modo oscuro">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+  </button>
+</div>
+
+<div id="sheet" class="sheet">
+  <button class="close" id="sheetClose" aria-label="Cerrar">✕</button>
+  <h2 id="sheetTitle"></h2>
+  <div class="sub" id="sheetSub"></div>
+  <div class="row">
+    <button class="btn primary" id="btnGuardar">Guardar sitio</button>
+    <button class="btn" id="btnCopiar">Copiar coordenadas</button>
+    <button class="btn" id="btnMaps">Abrir en Maps</button>
+  </div>
+</div>
+
+<div id="panelSitios" class="sheet">
+  <button class="close" id="panelClose" aria-label="Cerrar">✕</button>
+  <h2>Mis sitios</h2>
+  <ul id="listaSitios"></ul>
+  <div class="row">
+    <button class="btn" id="btnExportar">Exportar copia</button>
+    <button class="btn" id="btnImportar">Importar</button>
+  </div>
+  <input type="file" id="fileImport" accept="application/json,.json" hidden>
+</div>
+
+<div id="loading"><div>Cargando mapa de Sucre…</div><div class="bar"><i id="barFill"></i></div><div id="pct" style="font-size:13px;opacity:.7"></div></div>
+<div id="toast"></div>
+
+<script src="lib/maplibre-gl.js"></script>
+<script src="lib/pmtiles.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

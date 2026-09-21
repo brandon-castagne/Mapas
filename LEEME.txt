@@ -1,0 +1,27 @@
+MAPA SUCRE — app personal (funciona sin internet)
+=================================================
+Mapa vectorial de Sucre (OpenStreetMap / OpenMapTiles) + MapLibre GL + PMTiles.
+
+QUÉ INCLUYE
+- Mapa con zoom hasta nivel 19, modo claro/oscuro
+- Buscador offline (calles, lugares, negocios)
+- GPS (botón de ubicación)
+- Toca cualquier punto: guardar sitio, copiar coordenadas, abrir en Google Maps
+- "Mis sitios" (estrella): se guardan en tu teléfono; puedes exportar/importar una copia
+
+CÓMO USARLA
+1) Prueba en tu PC:   python3 -m http.server 8000   y abre http://localhost:8000
+2) Para el teléfono, súbela a un hosting HTTPS (GitHub Pages sirve):
+   - Crea un repo (por ejemplo "mapa-sucre") y sube TODO el contenido de esta carpeta
+   - Settings > Pages > Deploy from a branch > main / (root)
+   - Abre https://TU-USUARIO.github.io/mapa-sucre/ en el teléfono CON internet
+   - Espera a que cargue el mapa (24 MB, solo la primera vez)
+   - Menú del navegador > "Añadir a pantalla de inicio / Instalar app"
+3) Desde ahí funciona sin internet (el GPS también, si el teléfono tiene señal GPS).
+
+NOTAS
+- El mapa cubre solo la zona de Sucre (aprox. -65.34,-19.08 a -65.19,-18.98).
+- Si cambias archivos de la app, sube el número VERSION en sw.js.
+- Si reemplazas data/mapa.pmtiles, cambia DATA_CACHE en app.js.
+- Atribución obligatoria (ya visible en el mapa): © MapTiler © OpenStreetMap contributors.
+- Fuente de letras: Noto Sans (licencia OFL). MapLibre GL JS: licencia BSD-3.
